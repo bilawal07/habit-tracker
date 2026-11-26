@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/models/habit_task.dart';
 import 'database_provider.dart';
+import 'task_streak_provider.dart';
 
 /// Manages the active habit task list backed by local SQLite.
 class TaskListNotifier extends AsyncNotifier<List<HabitTask>> {
@@ -15,14 +16,20 @@ class TaskListNotifier extends AsyncNotifier<List<HabitTask>> {
     return repo.getTasks();
   }
 
-  /// Adds a new habit task to SQLite and refreshes state.
+  /// Adds a new habit task to SQLite, requests notification permission once,
+  /// and refreshes state.
   Future<void> addTask(
     String title, {
     ReminderMode reminderMode = ReminderMode.strict,
   }) async {
     final repo = ref.read(taskRepositoryProvider);
+    final prefs = ref.read(sharedPreferencesProvider);
     await repo.createTask(title: title, reminderMode: reminderMode);
     state = AsyncData(await repo.getTasks());
+    await ref
+        .read(notificationServiceProvider)
+        .requestPermissionsIfNeededOnce(prefs);
+    await ref.read(notificationSyncHelperProvider).resync();
   }
 
   /// Updates an existing habit task in SQLite and refreshes state.
@@ -30,6 +37,7 @@ class TaskListNotifier extends AsyncNotifier<List<HabitTask>> {
     final repo = ref.read(taskRepositoryProvider);
     await repo.updateTask(task);
     state = AsyncData(await repo.getTasks());
+    await ref.read(notificationSyncHelperProvider).resync();
   }
 
   /// Archives an existing habit task in SQLite and refreshes state.
@@ -37,6 +45,7 @@ class TaskListNotifier extends AsyncNotifier<List<HabitTask>> {
     final repo = ref.read(taskRepositoryProvider);
     await repo.archiveTask(taskId);
     state = AsyncData(await repo.getTasks());
+    await ref.read(notificationSyncHelperProvider).resync();
   }
 
   /// Deletes a task from SQLite and refreshes state.
@@ -44,6 +53,7 @@ class TaskListNotifier extends AsyncNotifier<List<HabitTask>> {
     final repo = ref.read(taskRepositoryProvider);
     await repo.deleteTask(taskId);
     state = AsyncData(await repo.getTasks());
+    await ref.read(notificationSyncHelperProvider).resync();
   }
 }
 

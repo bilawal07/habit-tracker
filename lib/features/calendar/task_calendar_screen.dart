@@ -7,6 +7,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/utils/date_utils.dart';
 import '../../data/models/habit_task.dart';
 import '../../domain/streak_engine.dart';
+import '../../providers/settings_provider.dart';
 import '../../providers/task_list_provider.dart';
 import '../../providers/task_streak_provider.dart';
 import '../badges/badges_screen.dart';
@@ -34,7 +35,14 @@ class _TaskCalendarScreenState extends ConsumerState<TaskCalendarScreen> {
   late DateTime _focusedDay;
   bool _isCheckingIn = false;
 
-  DateTime get _referenceNow => widget.nowOverride ?? DateTime.now();
+  DateTime get _referenceNow {
+    if (widget.nowOverride != null) return widget.nowOverride!;
+    final nightOwlGrace = ref.read(settingsProvider).nightOwlGrace;
+    return AppDateUtils.effectiveHabitDate(
+      DateTime.now(),
+      nightOwlGrace: nightOwlGrace,
+    );
+  }
 
   DateTime get _todayUtc => AppDateUtils.normalizeUtcDate(_referenceNow);
 

@@ -63,6 +63,18 @@ abstract final class AppDateUtils {
     return '$weekday, $month ${date.day}';
   }
 
+  /// Returns the effective habit date, applying a 1-hour Night Owl Grace
+  /// (12:00 AM - 12:59 AM counts toward yesterday) when enabled.
+  static DateTime effectiveHabitDate(
+    DateTime now, {
+    bool nightOwlGrace = false,
+  }) {
+    if (nightOwlGrace && now.hour < 1) {
+      return DateTime(now.year, now.month, now.day - 1, 23, 59);
+    }
+    return now;
+  }
+
   /// Formats [date] with year for badge unlock timestamps, e.g. `Nov 26, 2026`.
   static String formatShortDateWithYear(DateTime date) {
     final month = _months[date.month - 1];

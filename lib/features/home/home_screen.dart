@@ -5,10 +5,12 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/date_utils.dart';
 import '../../../data/models/habit_task.dart';
 import '../../../domain/streak_engine.dart';
+import '../../../providers/settings_provider.dart';
 import '../../../providers/task_list_provider.dart';
 import '../../../providers/task_streak_provider.dart';
 import '../badges/badges_screen.dart';
 import '../calendar/task_calendar_screen.dart';
+import '../settings/settings_screen.dart';
 import 'widgets/habit_task_card.dart';
 import 'widgets/task_form_sheet.dart';
 
@@ -20,10 +22,15 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final tasksAsync = ref.watch(taskListProvider);
     final logsMap = ref.watch(taskLogsMapProvider).asData?.value ?? const {};
+    final nightOwlGrace =
+        ref.watch(settingsProvider.select((s) => s.nightOwlGrace));
     final palette = Theme.of(context).extension<HabitPalette>()!;
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final now = DateTime.now();
+    final now = AppDateUtils.effectiveHabitDate(
+      DateTime.now(),
+      nightOwlGrace: nightOwlGrace,
+    );
     final todayLabel = AppDateUtils.formatHeaderDate(now);
 
     return Scaffold(
@@ -76,9 +83,10 @@ class HomeScreen extends ConsumerWidget {
           ),
           IconButton(
             tooltip: 'Settings',
-            onPressed: () => _showMessage(
-              context,
-              'Settings screen will unlock in Milestone 5.',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const SettingsScreen(),
+              ),
             ),
             icon: const Icon(Icons.settings_outlined),
           ),

@@ -3,13 +3,53 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/constants/badge_definitions.dart';
+import '../core/utils/date_utils.dart';
 import '../data/models/daily_log.dart';
 import '../data/models/habit_task.dart';
 import '../data/models/task_badge.dart';
 import '../domain/badge_engine.dart';
 import '../domain/streak_engine.dart';
+import '../services/notification_service.dart';
 import 'database_provider.dart';
+import 'settings_provider.dart';
 import 'task_list_provider.dart';
+
+/// Default disabled in tests; overridden with active instance in `main.dart`.
+final notificationServiceProvider = Provider<NotificationService>((ref) {
+  return NotificationService(enabled: false);
+});
+
+/// Coordinates SQLite task/log state with [NotificationService].
+class NotificationSyncHelper {
+  NotificationSyncHelper(this._ref);
+
+  final Ref _ref;
+
+  Future<void> resync({DateTime? now}) async {
+    final service = _ref.read(notificationServiceProvider);
+    if (!service.enabled) return;
+
+    final repo = _ref.read(taskRepositoryProvider);
+    final settings = _ref.read(settingsProvider);
+    final tasks = await repo.getTasks();
+    final effectiveNow = AppDateUtils.effectiveHabitDate(
+      now ?? DateTime.now(),
+      nightOwlGrace: settings.nightOwlGrace,
+    );
+    final checkedToday = await repo.getCheckedTaskIdsForDate(effectiveNow);
+
+    await service.syncSchedule(
+      tasks: tasks,
+      checkedTodayTaskIds: checkedToday,
+      bundleNotifications: settings.bundleNotifications,
+      now: now,
+    );
+  }
+}
+
+final notificationSyncHelperProvider = Provider<NotificationSyncHelper>((ref) {
+  return NotificationSyncHelper(ref);
+});
 
 /// Result returned when checking in a habit for today.
 class CheckInOutcome {
@@ -87,6 +127,7 @@ class TaskLogsNotifier extends AsyncNotifier<Map<int, List<DailyLog>>> {
     state = AsyncData(await repo.getAllLogsGroupedByTask());
     await ref.read(taskBadgesMapProvider.notifier).reload();
     ref.invalidate(todayCheckedTaskIdsProvider);
+    await ref.read(notificationSyncHelperProvider).resync();
 
     return CheckInOutcome(
       stats: stats,
