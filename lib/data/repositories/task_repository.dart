@@ -140,6 +140,21 @@ class TaskRepository {
     return rows.map(DailyLog.fromMap).toList();
   }
 
+  /// Returns all completion logs grouped by `task_id`, sorted ascending by date.
+  Future<Map<int, List<DailyLog>>> getAllLogsGroupedByTask() async {
+    final db = await _db;
+    final rows = await db.query(
+      'daily_logs',
+      orderBy: 'task_id ASC, log_date ASC',
+    );
+    final grouped = <int, List<DailyLog>>{};
+    for (final row in rows) {
+      final log = DailyLog.fromMap(row);
+      grouped.putIfAbsent(log.taskId, () => []).add(log);
+    }
+    return grouped;
+  }
+
   Future<bool> isCheckedOnDate(int taskId, DateTime date) async {
     final db = await _db;
     final rows = await db.query(

@@ -46,6 +46,16 @@ abstract final class AppDateUtils {
     'Dec',
   ];
 
+  /// Normalizes [date] to a UTC midnight date so calendar-day math is DST-safe.
+  static DateTime normalizeUtcDate(DateTime date) {
+    return DateTime.utc(date.year, date.month, date.day);
+  }
+
+  /// Returns whether [a] and [b] fall on the same local calendar day.
+  static bool isSameCalendarDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
   /// Formats [date] for the Home screen header, e.g. `Thursday, Nov 26`.
   static String formatHeaderDate(DateTime date) {
     final weekday = _weekdays[date.weekday - 1];

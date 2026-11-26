@@ -84,7 +84,8 @@ void main() {
     expect(find.byTooltip('Badges'), findsOneWidget);
     expect(find.byTooltip('Settings'), findsOneWidget);
     expect(find.text('1 of 1 habit still pending today'), findsOneWidget);
-    expect(find.text('Today: Ready'), findsOneWidget);
+    expect(find.text('Ready'), findsOneWidget);
+    expect(find.text('Today: Pending'), findsOneWidget);
 
     await tester.pumpWidget(const SizedBox.shrink());
   });
@@ -125,8 +126,10 @@ void main() {
   ) async {
     await launchApp(tester);
 
-    // Tap card to edit "Speak English".
-    await tester.tap(find.text('Speak English'));
+    // Open task menu to edit "Speak English".
+    await tester.tap(find.byTooltip('Task options'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Edit'));
     await tester.pumpAndSettle();
     expect(find.text('Edit Habit'), findsOneWidget);
 
@@ -141,7 +144,9 @@ void main() {
     expect(find.text('Off'), findsOneWidget);
 
     // Delete via edit sheet + confirmation dialog -> shows empty state.
-    await tester.tap(find.text('Speak English 15m'));
+    await tester.tap(find.byTooltip('Task options'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Edit'));
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Delete'));
     await tester.tap(find.text('Delete'));
@@ -163,9 +168,8 @@ void main() {
     await _pumpAsyncDbWork(tester);
     await _pumpUntilFound(tester, find.text('Evening Walk'));
 
-    await tester.tap(find.text('Evening Walk'));
+    await tester.tap(find.byTooltip('Task options'));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Archive'));
     await tester.tap(find.text('Archive'));
     await _pumpAsyncDbWork(tester);
     await _pumpUntilFound(tester, find.text('No habits yet'));

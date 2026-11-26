@@ -2,24 +2,23 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../data/models/habit_task.dart';
+import '../../../domain/streak_engine.dart';
 
 /// Menu actions available on a [HabitTaskCard].
 enum TaskCardAction { edit, archive, delete }
 
-/// Card displaying a daily habit, its Fire/Ready state, streak count, and today status.
+/// Card displaying a daily habit, its Hot Fire / Cold state, streak count, and today status.
 class HabitTaskCard extends StatelessWidget {
   const HabitTaskCard({
     super.key,
     required this.task,
-    required this.isDoneToday,
-    this.streakDays = 0,
+    required this.stats,
     required this.onTap,
     required this.onActionSelected,
   });
 
   final HabitTask task;
-  final bool isDoneToday;
-  final int streakDays;
+  final StreakStats stats;
   final VoidCallback onTap;
   final ValueChanged<TaskCardAction> onActionSelected;
 
@@ -29,18 +28,26 @@ class HabitTaskCard extends StatelessWidget {
     final colorScheme = theme.colorScheme;
     final palette = theme.extension<HabitPalette>()!;
 
-    final statusColor = isDoneToday ? palette.done : palette.fire;
-    final statusBg = isDoneToday
-        ? palette.done.withValues(alpha: 0.12)
-        : palette.fireContainer;
-    final statusLabel = isDoneToday
-        ? 'Done'
-        : (streakDays > 0 ? 'Pending' : 'Ready');
+    final isDoneToday = stats.isCheckedToday;
+    final isCold = stats.state == StreakState.cold;
+    final stateColor = isCold ? palette.cold : palette.fire;
+    final stateBg = isCold ? palette.coldContainer : palette.fireContainer;
+
+    final avatarColor = isDoneToday ? palette.done : stateColor;
+    final avatarBg =
+        isDoneToday ? palette.done.withValues(alpha: 0.14) : stateBg;
+    final avatarIcon = isDoneToday
+        ? Icons.check_rounded
+        : (isCold ? Icons.ac_unit : Icons.local_fire_department);
+
+    final todayColor = isDoneToday ? palette.done : stateColor;
+    final todayBg =
+        isDoneToday ? palette.done.withValues(alpha: 0.12) : stateBg;
+    final todayLabel = isDoneToday ? 'Today: Done' : 'Today: Pending';
 
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        // In Milestone 3, card tap will open the Monthly Calendar screen.
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 14, 8, 14),
@@ -52,13 +59,8 @@ class HabitTaskCard extends StatelessWidget {
                 children: [
                   CircleAvatar(
                     radius: 22,
-                    backgroundColor: statusBg,
-                    child: Icon(
-                      isDoneToday
-                          ? Icons.check_rounded
-                          : Icons.local_fire_department,
-                      color: statusColor,
-                    ),
+                    backgroundColor: avatarBg,
+                    child: Icon(avatarIcon, color: avatarColor),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
@@ -128,23 +130,32 @@ class HabitTaskCard extends StatelessWidget {
                 runSpacing: 6,
                 children: [
                   _StatusChip(
-                    icon: isDoneToday
-                        ? Icons.local_fire_department
-                        : Icons.bolt_outlined,
-                    label: '$streakDays ${streakDays == 1 ? 'day' : 'days'} streak',
-                    foregroundColor:
-                        streakDays >= 3 ? palette.fire : colorScheme.onSurfaceVariant,
-                    backgroundColor: streakDays >= 3
+                    icon: isCold
+                        ? Icons.ac_unit
+                        : Icons.local_fire_department,
+                    label: stats.state.label,
+                    foregroundColor: stateColor,
+                    backgroundColor: stateBg,
+                  ),
+                  _StatusChip(
+                    icon: Icons.bolt_outlined,
+                    label:
+                        '${stats.currentStreak} ${stats.currentStreak == 1 ? 'day' : 'days'} streak',
+                    foregroundColor: stats.currentStreak >= 3
+                        ? palette.fire
+                        : colorScheme.onSurfaceVariant,
+                    backgroundColor: stats.currentStreak >= 3
                         ? palette.fireContainer
-                        : colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
+                        : colorScheme.surfaceContainerHighest
+                            .withValues(alpha: 0.6),
                   ),
                   _StatusChip(
                     icon: isDoneToday
                         ? Icons.check_circle_outline
                         : Icons.schedule_outlined,
-                    label: isDoneToday ? 'Today: Done' : 'Today: $statusLabel',
-                    foregroundColor: statusColor,
-                    backgroundColor: statusBg,
+                    label: todayLabel,
+                    foregroundColor: todayColor,
+                    backgroundColor: todayBg,
                   ),
                 ],
               ),

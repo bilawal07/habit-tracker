@@ -4,7 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/date_utils.dart';
 import '../../../data/models/habit_task.dart';
+import '../../../domain/streak_engine.dart';
 import '../../../providers/task_list_provider.dart';
+import '../../../providers/task_streak_provider.dart';
+import '../calendar/task_calendar_screen.dart';
 import 'widgets/habit_task_card.dart';
 import 'widgets/task_form_sheet.dart';
 
@@ -15,12 +18,12 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tasksAsync = ref.watch(taskListProvider);
-    final checkedIdsAsync = ref.watch(todayCheckedTaskIdsProvider);
-    final checkedToday = checkedIdsAsync.asData?.value ?? const <int>{};
+    final logsMap = ref.watch(taskLogsMapProvider).asData?.value ?? const {};
     final palette = Theme.of(context).extension<HabitPalette>()!;
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final todayLabel = AppDateUtils.formatHeaderDate(DateTime.now());
+    final now = DateTime.now();
+    final todayLabel = AppDateUtils.formatHeaderDate(now);
 
     return Scaffold(
       appBar: AppBar(
@@ -105,9 +108,16 @@ class HomeScreen extends ConsumerWidget {
             );
           }
 
-          final doneCount = tasks
-              .where((t) => t.id != null && checkedToday.contains(t.id))
-              .length;
+          final taskStats = [
+            for (final task in tasks)
+              StreakEngine.fromLogs(
+                logsMap[task.id] ?? const [],
+                createdAt: task.createdAt,
+                now: now,
+              ),
+          ];
+          final doneCount =
+              taskStats.where((stats) => stats.isCheckedToday).length;
           final pendingCount = tasks.length - doneCount;
 
           return ListView.separated(
@@ -125,13 +135,12 @@ class HomeScreen extends ConsumerWidget {
               }
 
               final task = tasks[index - 1];
-              final isDoneToday =
-                  task.id != null && checkedToday.contains(task.id);
+              final stats = taskStats[index - 1];
 
               return HabitTaskCard(
                 task: task,
-                isDoneToday: isDoneToday,
-                onTap: () => _openEditSheet(context, ref, task),
+                stats: stats,
+                onTap: () => _openCalendar(context, task),
                 onActionSelected: (action) =>
                     _handleCardAction(context, ref, task, action),
               );
@@ -143,6 +152,16 @@ class HomeScreen extends ConsumerWidget {
         onPressed: () => _openCreateSheet(context, ref),
         icon: const Icon(Icons.add),
         label: const Text('Add Task'),
+      ),
+    );
+  }
+
+  void _openCalendar(BuildContext context, HabitTask task) {
+    final taskId = task.id;
+    if (taskId == null) return;
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => TaskCalendarScreen(taskId: taskId),
       ),
     );
   }
