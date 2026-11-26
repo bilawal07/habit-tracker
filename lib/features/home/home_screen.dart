@@ -7,6 +7,7 @@ import '../../../data/models/habit_task.dart';
 import '../../../domain/streak_engine.dart';
 import '../../../providers/task_list_provider.dart';
 import '../../../providers/task_streak_provider.dart';
+import '../badges/badges_screen.dart';
 import '../calendar/task_calendar_screen.dart';
 import 'widgets/habit_task_card.dart';
 import 'widgets/task_form_sheet.dart';
@@ -66,9 +67,10 @@ class HomeScreen extends ConsumerWidget {
         actions: [
           IconButton(
             tooltip: 'Badges',
-            onPressed: () => _showMessage(
-              context,
-              'Badges screen will unlock in Milestone 4.',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const BadgesScreen(),
+              ),
             ),
             icon: const Icon(Icons.emoji_events_outlined),
           ),

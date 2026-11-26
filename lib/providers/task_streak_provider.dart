@@ -2,11 +2,52 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/constants/badge_definitions.dart';
 import '../data/models/daily_log.dart';
 import '../data/models/habit_task.dart';
+import '../data/models/task_badge.dart';
+import '../domain/badge_engine.dart';
 import '../domain/streak_engine.dart';
 import 'database_provider.dart';
 import 'task_list_provider.dart';
+
+/// Result returned when checking in a habit for today.
+class CheckInOutcome {
+  const CheckInOutcome({
+    required this.stats,
+    required this.newlyUnlockedBadges,
+  });
+
+  final StreakStats stats;
+  final List<BadgeKey> newlyUnlockedBadges;
+}
+
+/// Holds SQLite unlocked badges grouped by task ID.
+class TaskBadgesNotifier extends AsyncNotifier<Map<int, List<TaskBadge>>> {
+  @override
+  FutureOr<Map<int, List<TaskBadge>>> build() async {
+    ref.watch(taskListProvider);
+    final repo = ref.read(taskRepositoryProvider);
+    return repo.getAllBadgesGroupedByTask();
+  }
+
+  Future<void> reload() async {
+    final repo = ref.read(taskRepositoryProvider);
+    state = AsyncData(await repo.getAllBadgesGroupedByTask());
+  }
+}
+
+final taskBadgesMapProvider =
+    AsyncNotifierProvider<TaskBadgesNotifier, Map<int, List<TaskBadge>>>(
+  TaskBadgesNotifier.new,
+);
+
+/// Returns unlocked badges for a specific [taskId].
+final taskBadgesForTaskProvider =
+    Provider.family<List<TaskBadge>, int>((ref, taskId) {
+  final badgesMap = ref.watch(taskBadgesMapProvider).asData?.value;
+  return badgesMap?[taskId] ?? const [];
+});
 
 /// Holds SQLite completion logs grouped by task ID for live streak updates.
 class TaskLogsNotifier extends AsyncNotifier<Map<int, List<DailyLog>>> {
@@ -17,12 +58,40 @@ class TaskLogsNotifier extends AsyncNotifier<Map<int, List<DailyLog>>> {
     return repo.getAllLogsGroupedByTask();
   }
 
-  /// Records today's check-in for [taskId] and refreshes streak state.
-  Future<void> checkInToday(int taskId, {DateTime? now}) async {
+  /// Records today's check-in for [taskId], evaluates badges, and refreshes state.
+  Future<CheckInOutcome> checkInToday(int taskId, {DateTime? now}) async {
+    final timestamp = now ?? DateTime.now();
     final repo = ref.read(taskRepositoryProvider);
-    await repo.checkInDate(taskId, date: now ?? DateTime.now());
+    await repo.checkInDate(taskId, date: timestamp);
+
+    final task = await repo.getTaskById(taskId);
+    final taskLogs = await repo.getLogsForTask(taskId);
+    final createdAt = task?.createdAt ?? timestamp;
+    final stats = StreakEngine.fromLogs(
+      taskLogs,
+      createdAt: createdAt,
+      now: timestamp,
+    );
+
+    final earnedKeys = BadgeEngine.evaluateEarnedKeys(
+      logs: taskLogs,
+      createdAt: createdAt,
+      now: timestamp,
+    );
+    final newlyUnlocked = await repo.unlockMissingBadges(
+      taskId,
+      earnedKeys,
+      unlockedAt: timestamp,
+    );
+
     state = AsyncData(await repo.getAllLogsGroupedByTask());
+    await ref.read(taskBadgesMapProvider.notifier).reload();
     ref.invalidate(todayCheckedTaskIdsProvider);
+
+    return CheckInOutcome(
+      stats: stats,
+      newlyUnlockedBadges: newlyUnlocked,
+    );
   }
 }
 

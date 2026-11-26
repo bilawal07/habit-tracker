@@ -208,4 +208,39 @@ class TaskRepository {
     );
     return rows.map(TaskBadge.fromMap).toList();
   }
+
+  /// Returns all unlocked badges grouped by `task_id`.
+  Future<Map<int, List<TaskBadge>>> getAllBadgesGroupedByTask() async {
+    final db = await _db;
+    final rows = await db.query(
+      'task_badges',
+      orderBy: 'task_id ASC, unlocked_at ASC',
+    );
+    final grouped = <int, List<TaskBadge>>{};
+    for (final row in rows) {
+      final badge = TaskBadge.fromMap(row);
+      grouped.putIfAbsent(badge.taskId, () => []).add(badge);
+    }
+    return grouped;
+  }
+
+  /// Unlocks any [keys] not yet earned for [taskId] and returns newly unlocked keys.
+  Future<List<BadgeKey>> unlockMissingBadges(
+    int taskId,
+    Iterable<BadgeKey> keys, {
+    DateTime? unlockedAt,
+  }) async {
+    final existing = await getBadgesForTask(taskId);
+    final existingKeys = existing.map((b) => b.badgeKey).toSet();
+    final newlyUnlocked = <BadgeKey>[];
+    final timestamp = unlockedAt ?? DateTime.now();
+
+    for (final key in keys) {
+      if (existingKeys.add(key)) {
+        await unlockBadge(taskId, key, unlockedAt: timestamp);
+        newlyUnlocked.add(key);
+      }
+    }
+    return newlyUnlocked;
+  }
 }

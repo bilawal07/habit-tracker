@@ -62,4 +62,10 @@ abstract final class AppDateUtils {
     final month = _months[date.month - 1];
     return '$weekday, $month ${date.day}';
   }
+
+  /// Formats [date] with year for badge unlock timestamps, e.g. `Nov 26, 2026`.
+  static String formatShortDateWithYear(DateTime date) {
+    final month = _months[date.month - 1];
+    return '$month ${date.day}, ${date.year}';
+  }
 }

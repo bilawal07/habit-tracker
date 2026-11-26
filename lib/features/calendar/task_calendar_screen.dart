@@ -9,6 +9,8 @@ import '../../data/models/habit_task.dart';
 import '../../domain/streak_engine.dart';
 import '../../providers/task_list_provider.dart';
 import '../../providers/task_streak_provider.dart';
+import '../badges/badges_screen.dart';
+import '../badges/widgets/badge_unlock_dialog.dart';
 import '../home/widgets/task_form_sheet.dart';
 
 /// Monthly calendar and Hot Fire / Cold streak screen for a single habit task.
@@ -46,14 +48,26 @@ class _TaskCalendarScreenState extends ConsumerState<TaskCalendarScreen> {
     if (stats.isCheckedToday || _isCheckingIn) return;
     setState(() => _isCheckingIn = true);
     try {
-      await ref
+      final outcome = await ref
           .read(taskLogsMapProvider.notifier)
           .checkInToday(widget.taskId, now: _referenceNow);
-      if (mounted) {
-        _showMessage(
-          stats.state == StreakState.cold
-              ? 'Spark ignited! Your habit is warming back up.'
-              : 'Checked off for today! Keep the fire burning.',
+      if (!mounted) return;
+      _showMessage(
+        stats.state == StreakState.cold
+            ? 'Spark ignited! Your habit is warming back up.'
+            : 'Checked off for today! Keep the fire burning.',
+      );
+      if (outcome.newlyUnlockedBadges.isNotEmpty) {
+        await showBadgeUnlockDialog(
+          context,
+          outcome.newlyUnlockedBadges,
+          onViewBadges: () {
+            Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => BadgesScreen(initialTaskId: widget.taskId),
+              ),
+            );
+          },
         );
       }
     } finally {
