@@ -20,4 +20,36 @@ abstract final class AppDateUtils {
       int.parse(parts[2]),
     );
   }
+
+  static const List<String> _weekdays = [
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday',
+  ];
+
+  static const List<String> _months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+
+  /// Formats [date] for the Home screen header, e.g. `Thursday, Nov 26`.
+  static String formatHeaderDate(DateTime date) {
+    final weekday = _weekdays[date.weekday - 1];
+    final month = _months[date.month - 1];
+    return '$weekday, $month ${date.day}';
+  }
 }

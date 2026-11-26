@@ -152,6 +152,18 @@ class TaskRepository {
     return rows.isNotEmpty;
   }
 
+  /// Returns all task IDs that have a completion log for [date].
+  Future<Set<int>> getCheckedTaskIdsForDate(DateTime date) async {
+    final db = await _db;
+    final rows = await db.query(
+      'daily_logs',
+      columns: ['task_id'],
+      where: 'log_date = ?',
+      whereArgs: [AppDateUtils.toDateKey(date)],
+    );
+    return rows.map((row) => row['task_id'] as int).toSet();
+  }
+
   /// Idempotently unlocks [badgeKey] for [taskId].
   Future<void> unlockBadge(
     int taskId,

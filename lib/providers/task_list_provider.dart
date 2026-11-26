@@ -25,6 +25,20 @@ class TaskListNotifier extends AsyncNotifier<List<HabitTask>> {
     state = AsyncData(await repo.getTasks());
   }
 
+  /// Updates an existing habit task in SQLite and refreshes state.
+  Future<void> updateTask(HabitTask task) async {
+    final repo = ref.read(taskRepositoryProvider);
+    await repo.updateTask(task);
+    state = AsyncData(await repo.getTasks());
+  }
+
+  /// Archives an existing habit task in SQLite and refreshes state.
+  Future<void> archiveTask(int taskId) async {
+    final repo = ref.read(taskRepositoryProvider);
+    await repo.archiveTask(taskId);
+    state = AsyncData(await repo.getTasks());
+  }
+
   /// Deletes a task from SQLite and refreshes state.
   Future<void> deleteTask(int taskId) async {
     final repo = ref.read(taskRepositoryProvider);
@@ -37,3 +51,10 @@ final taskListProvider =
     AsyncNotifierProvider<TaskListNotifier, List<HabitTask>>(
   TaskListNotifier.new,
 );
+
+/// Task IDs completed today, refreshed whenever [taskListProvider] changes.
+final todayCheckedTaskIdsProvider = FutureProvider<Set<int>>((ref) async {
+  ref.watch(taskListProvider);
+  final repo = ref.read(taskRepositoryProvider);
+  return repo.getCheckedTaskIdsForDate(DateTime.now());
+});

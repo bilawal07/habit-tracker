@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:habit_tracker/core/constants/badge_definitions.dart';
+import 'package:habit_tracker/core/utils/date_utils.dart';
 import 'package:habit_tracker/data/local/database_helper.dart';
 import 'package:habit_tracker/data/models/habit_task.dart';
 import 'package:habit_tracker/data/repositories/task_repository.dart';
@@ -135,5 +136,19 @@ void main() {
     await repository.seedInitialTaskIfNeeded(prefs);
     tasks = await repository.getTasks();
     expect(tasks, isEmpty);
+  });
+
+  test('getCheckedTaskIdsForDate returns only tasks completed on that date', () async {
+    final t1 = await repository.createTask(title: 'Speak English');
+    final t2 = await repository.createTask(title: 'Walk 20 Mins');
+    final today = DateTime(2026, 11, 26, 19, 0);
+    final yesterday = DateTime(2026, 11, 25, 20, 0);
+
+    await repository.checkInDate(t1.id!, date: today);
+    await repository.checkInDate(t2.id!, date: yesterday);
+
+    expect(await repository.getCheckedTaskIdsForDate(today), {t1.id!});
+    expect(await repository.getCheckedTaskIdsForDate(yesterday), {t2.id!});
+    expect(AppDateUtils.formatHeaderDate(today), 'Thursday, Nov 26');
   });
 }
