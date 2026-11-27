@@ -3,7 +3,9 @@ import 'package:sqflite/sqflite.dart';
 
 import '../../core/constants/badge_definitions.dart';
 import '../../core/utils/date_utils.dart';
+import '../../domain/backup_codec.dart';
 import '../local/database_helper.dart';
+import '../models/app_settings.dart';
 import '../models/daily_log.dart';
 import '../models/habit_task.dart';
 import '../models/task_badge.dart';
@@ -242,5 +244,71 @@ class TaskRepository {
       }
     }
     return newlyUnlocked;
+  }
+
+  /// Exports all tasks (including archived), logs, badges, and settings into a [BackupBundle].
+  Future<BackupBundle> exportBackup({
+    required AppSettings settings,
+    DateTime? now,
+  }) async {
+    final tasks = await getTasks(includeArchived: true);
+    final logsMap = await getAllLogsGroupedByTask();
+    final badgesMap = await getAllBadgesGroupedByTask();
+
+    final entries = <BackupTaskEntry>[
+      for (final task in tasks)
+        if (task.id != null)
+          BackupTaskEntry(
+            task: task,
+            logs: logsMap[task.id!] ?? const [],
+            badges: badgesMap[task.id!] ?? const [],
+          ),
+    ];
+
+    return BackupBundle(
+      schemaVersion: BackupCodec.currentSchemaVersion,
+      exportedAt: now ?? DateTime.now(),
+      settings: settings,
+      entries: entries,
+    );
+  }
+
+  /// Atomically replaces local SQLite tasks/logs/badges with [bundle].
+  Future<void> restoreFromBackup(BackupBundle bundle) async {
+    final db = await _db;
+    await db.transaction((txn) async {
+      await txn.delete('task_badges');
+      await txn.delete('daily_logs');
+      await txn.delete('tasks');
+
+      for (final entry in bundle.entries) {
+        final map = entry.task.toMap()..remove('id');
+        final newTaskId = await txn.insert('tasks', map);
+
+        for (final log in entry.logs) {
+          await txn.insert(
+            'daily_logs',
+            {
+              'task_id': newTaskId,
+              'log_date': log.logDate,
+              'completed_at': log.completedAt.toIso8601String(),
+            },
+            conflictAlgorithm: ConflictAlgorithm.ignore,
+          );
+        }
+
+        for (final badge in entry.badges) {
+          await txn.insert(
+            'task_badges',
+            {
+              'task_id': newTaskId,
+              'badge_key': badge.badgeKey.storageKey,
+              'unlocked_at': badge.unlockedAt.toIso8601String(),
+            },
+            conflictAlgorithm: ConflictAlgorithm.ignore,
+          );
+        }
+      }
+    });
   }
 }

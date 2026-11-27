@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_colors.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/task_streak_provider.dart';
+import '../../services/backup_service.dart';
 
 /// App Settings screen for notifications, battery saver, Night Owl Grace, theme, and backup.
 class SettingsScreen extends ConsumerWidget {
@@ -120,20 +121,14 @@ class SettingsScreen extends ConsumerWidget {
                   leading: const Icon(Icons.upload_file_outlined),
                   title: const Text('Export Backup (.json)'),
                   subtitle: const Text('Save tasks, logs, and badges locally'),
-                  onTap: () => _showMessage(
-                    context,
-                    'JSON backup export will unlock in Milestone 6.',
-                  ),
+                  onTap: () => _handleExport(context, ref),
                 ),
                 const Divider(height: 1),
                 ListTile(
                   leading: const Icon(Icons.download_outlined),
                   title: const Text('Import Backup (.json)'),
                   subtitle: const Text('Restore habits from a backup file'),
-                  onTap: () => _showMessage(
-                    context,
-                    'JSON backup import will unlock in Milestone 6.',
-                  ),
+                  onTap: () => _handleImport(context, ref),
                 ),
               ],
             ),
@@ -162,6 +157,59 @@ class SettingsScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _handleExport(BuildContext context, WidgetRef ref) async {
+    try {
+      final bundle = await ref.read(backupServiceProvider).exportAndShare();
+      if (context.mounted) {
+        _showMessage(
+          context,
+          'Exported ${bundle.entries.length} habits and ${bundle.totalLogs} check-ins.',
+        );
+      }
+    } catch (error) {
+      if (context.mounted) {
+        _showMessage(context, 'Export failed: $error');
+      }
+    }
+  }
+
+  Future<void> _handleImport(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Import Backup?'),
+        content: const Text(
+          'Restoring a backup replaces your current tasks, streak logs, and '
+          'badges on this device with the contents of the selected .json file.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Choose File'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    try {
+      final bundle = await ref.read(backupServiceProvider).pickAndImport();
+      if (bundle == null || !context.mounted) return;
+      _showMessage(
+        context,
+        'Restored ${bundle.entries.length} habits and ${bundle.totalLogs} check-ins.',
+      );
+    } catch (error) {
+      if (context.mounted) {
+        _showMessage(context, 'Import failed: $error');
+      }
+    }
   }
 
   void _showPrivacyDialog(BuildContext context) {

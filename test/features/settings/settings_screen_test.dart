@@ -88,6 +88,17 @@ void main() {
     expect(materialApp.themeMode, ThemeMode.dark);
 
     await tester.scrollUntilVisible(
+      find.text('Import Backup (.json)'),
+      120,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Import Backup (.json)'));
+    await tester.pumpAndSettle();
+    expect(find.text('Import Backup?'), findsOneWidget);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
       find.text('Privacy Policy'),
       120,
       scrollable: find.byType(Scrollable).first,

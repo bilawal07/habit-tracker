@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/badge_definitions.dart';
+import '../../../core/theme/app_colors.dart';
 import '../badge_visuals.dart';
 
 /// Displays a celebratory popup when checking in unlocks one or more new badges.
@@ -16,12 +17,14 @@ Future<void> showBadgeUnlockDialog(
     builder: (dialogContext) {
       final theme = Theme.of(dialogContext);
       final colorScheme = theme.colorScheme;
+      final palette =
+          theme.extension<HabitPalette>() ?? HabitPalette.light;
 
       return AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         icon: CircleAvatar(
           radius: 30,
-          backgroundColor: const Color(0xFFFFF3E0),
+          backgroundColor: palette.fireContainer,
           child: Icon(
             kBadgeVisuals[unlockedKeys.first]!.icon,
             size: 32,
