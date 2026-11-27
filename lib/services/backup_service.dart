@@ -13,6 +13,7 @@ import '../providers/database_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/task_list_provider.dart';
 import '../providers/task_streak_provider.dart';
+import 'analytics_service.dart';
 
 /// Handles local `.json` backup export (share sheet) and import (file picker).
 class BackupService {
@@ -41,6 +42,9 @@ class BackupService {
         text: 'Offline backup for HotFire Habits.',
       ),
     );
+    await _ref
+        .read(analyticsServiceProvider)
+        .logBackupExported(bundle.entries.length);
     return bundle;
   }
 
@@ -81,6 +85,9 @@ class BackupService {
     _ref.invalidate(taskBadgesMapProvider);
     _ref.invalidate(todayCheckedTaskIdsProvider);
     await _ref.read(notificationSyncHelperProvider).resync();
+    await _ref
+        .read(analyticsServiceProvider)
+        .logBackupImported(bundle.entries.length);
   }
 }
 

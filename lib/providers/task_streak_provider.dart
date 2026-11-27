@@ -9,6 +9,7 @@ import '../data/models/habit_task.dart';
 import '../data/models/task_badge.dart';
 import '../domain/badge_engine.dart';
 import '../domain/streak_engine.dart';
+import '../services/analytics_service.dart';
 import '../services/notification_service.dart';
 import 'database_provider.dart';
 import 'settings_provider.dart';
@@ -128,6 +129,15 @@ class TaskLogsNotifier extends AsyncNotifier<Map<int, List<DailyLog>>> {
     await ref.read(taskBadgesMapProvider.notifier).reload();
     ref.invalidate(todayCheckedTaskIdsProvider);
     await ref.read(notificationSyncHelperProvider).resync();
+
+    final analytics = ref.read(analyticsServiceProvider);
+    await analytics.logHabitCheckedIn(
+      streakState: stats.state.name,
+      currentStreak: stats.currentStreak,
+    );
+    for (final badge in newlyUnlocked) {
+      await analytics.logBadgeUnlocked(badge.storageKey);
+    }
 
     return CheckInOutcome(
       stats: stats,

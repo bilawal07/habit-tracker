@@ -6,6 +6,7 @@ import 'app.dart';
 import 'providers/database_provider.dart';
 import 'providers/task_list_provider.dart';
 import 'providers/task_streak_provider.dart';
+import 'services/analytics_service.dart';
 import 'services/notification_service.dart';
 
 Future<void> main() async {
@@ -31,6 +32,7 @@ Future<void> main() async {
 
   // Refresh the rolling 7-day notification schedule on every app launch.
   await container.read(notificationSyncHelperProvider).resync();
+  await container.read(analyticsServiceProvider).logAppOpen();
 
   runApp(
     UncontrolledProviderScope(

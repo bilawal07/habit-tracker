@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/models/habit_task.dart';
+import '../services/analytics_service.dart';
 import 'database_provider.dart';
 import 'task_streak_provider.dart';
 
@@ -30,6 +31,9 @@ class TaskListNotifier extends AsyncNotifier<List<HabitTask>> {
         .read(notificationServiceProvider)
         .requestPermissionsIfNeededOnce(prefs);
     await ref.read(notificationSyncHelperProvider).resync();
+    await ref
+        .read(analyticsServiceProvider)
+        .logTaskCreated(reminderMode.storageValue);
   }
 
   /// Updates an existing habit task in SQLite and refreshes state.
